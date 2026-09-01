@@ -209,7 +209,7 @@
 <body>
 
     <div class="profile-corner">
-        <span class="user-name" id="display-username">Loading...</span>
+        <span class="user-name" id="display-username">Username</span>
         
         <div class="profile-pic-container">
             <img id="avatar" class="profile-pic" src="https://picsum.photos/200" alt="Profile Picture">
@@ -232,6 +232,18 @@
                 <label for="update-username">New Username</label>
                 <input type="text" id="update-username" placeholder="Enter new username">
             </div>
+            <div class="input-group">
+                <label for="update-password">New Password</label>
+                <input type="password" id="update-password" minlength="1" placeholder="Enter new password">
+            </div>
+            <div class="input-group">
+                <label for="confirm-new-password">Confirm New Password</label>
+                <input type="password" id="confirm-new-password" placeholder="Re-enter new password">
+            </div>
+            <div class="input-group">
+                <label for="current-password">Current Password (Required to save)</label>
+                <input type="password" id="current-password" required placeholder="Verify current password">
+            </div>
             <button type="submit" class="save-btn">Update Profile</button>
         </form>
     </div>
@@ -243,7 +255,7 @@
             <thead>
                 <tr>
                     <th>Username</th>
-                    <th>Email</th>
+                    <th>Password</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -252,130 +264,124 @@
         </table>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, getDoc, updateDoc, collection, getDocs, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    <script>
+        const API_URL = "http://localhost:3000/api";
+        const STRICT_ADMIN_USERNAME = "Riyaansh Goenka"[cite: 1];
+        let currentUsername = localStorage.getItem('currentUsername');
 
-        // TODO: Replace with your actual Firebase config keys from Firebase Console
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
+        if (!currentUsername) {
+            alert('Please log in first.');
+            window.location.href = 'index.html';
+        } else {
+            loadUserData();
+        }
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
-        const STRICT_ADMIN_USERNAME = "Riyaansh Goenka";
-        let currentUser = null;
-        let currentUserData = null;
-
-        // Check user session globally across devices
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                currentUser = user;
-                const userDocRef = doc(db, "users", user.uid);
-                const userSnap = await getDoc(userDocRef);
-
-                if (userSnap.exists()) {
-                    currentUserData = userSnap.data();
-                    document.getElementById('display-username').textContent = currentUserData.username;
-                    
-                    if (currentUserData.pfp) {
-                        document.getElementById('avatar').src = currentUserData.pfp;
-                    }
-
-                    // Show Admin Panel if username matches Admin Name
-                    if (currentUserData.username.toLowerCase() === STRICT_ADMIN_USERNAME.toLowerCase()) {
-                        document.getElementById('admin-panel').style.display = 'block';
-                        loadAdminUserList();
-                    }
+        async function loadUserData() {
+            try {
+                const res = await fetch(`${API_URL}/user/${currentUsername}`);
+                if (!res.ok) {
+                    alert('Session expired or user missing.');
+                    window.location.href = 'index.html';
+                    return;
                 }
-            } else {
-                alert('Please log in first.');
-                window.location.href = 'index.html';
+
+                const userData = await res.json();
+                document.getElementById('display-username').textContent = userData.username;
+
+                if (userData.pfp) {
+                    document.getElementById('avatar').src = userData.pfp;
+                }
+
+                if (currentUsername.toLowerCase() === STRICT_ADMIN_USERNAME.toLowerCase()) {
+                    document.getElementById('admin-panel').style.display = 'block';
+                    loadAdminUserList();
+                }
+            } catch (err) {
+                alert('Could not connect to server.');
             }
-        });
+        }
 
         // Handle Account Settings Update
         document.getElementById('settings-form').addEventListener('submit', async function(e) {
             e.preventDefault();
 
             const newUsername = document.getElementById('update-username').value.trim();
-            if (!newUsername) return;
+            const newPassword = document.getElementById('update-password').value;
+            const confirmNewPassword = document.getElementById('confirm-new-password').value;
+            const currentPassword = document.getElementById('current-password').value;
+
+            if (newPassword && newPassword !== confirmNewPassword) {
+                alert("New passwords do not match!");
+                return;
+            }
 
             try {
-                const q = query(collection(db, "users"), where("usernameLower", "==", newUsername.toLowerCase()));
-                const querySnapshot = await getDocs(q);
+                const response = await fetch(`${API_URL}/user/update`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentUsername, newUsername, newPassword, currentPassword })
+                });
 
-                if (!querySnapshot.empty) {
-                    alert("That username is already taken. Please choose another one.");
+                const data = await response.json();
+
+                if (!response.ok) {
+                    alert(data.error);
                     return;
                 }
 
-                const userDocRef = doc(db, "users", currentUser.uid);
-                await updateDoc(userDocRef, {
-                    username: newUsername,
-                    usernameLower: newUsername.toLowerCase()
-                });
-
+                localStorage.setItem('currentUsername', data.updatedUsername);
                 alert("Account details updated successfully!");
                 window.location.reload();
-            } catch (error) {
-                alert(error.message);
+            } catch (err) {
+                alert('Server error.');
             }
         });
 
-        // Render user list inside Admin Panel
+        // Load Admin Table
         async function loadAdminUserList() {
             const userListContainer = document.getElementById('user-list');
             userListContainer.innerHTML = '';
 
-            const querySnapshot = await getDocs(collection(db, "users"));
+            try {
+                const res = await fetch(`${API_URL}/admin/users`);
+                const users = await res.json();
 
-            querySnapshot.forEach((docSnap) => {
-                const user = docSnap.data();
-                const tr = document.createElement('tr');
-                const isMainAdmin = (user.username.toLowerCase() === STRICT_ADMIN_USERNAME.toLowerCase());
+                users.forEach(user => {
+                    const tr = document.createElement('tr');
+                    const isMainAdmin = (user.username.toLowerCase() === STRICT_ADMIN_USERNAME.toLowerCase());
 
-                tr.innerHTML = `
-                    <td>${user.username} ${isMainAdmin ? '<strong>(Admin)</strong>' : ''}</td>
-                    <td>${user.email || 'N/A'}</td>
-                    <td>
-                        ${isMainAdmin 
-                            ? '<em>N/A (Owner)</em>' 
-                            : `<button class="delete-btn" data-id="${docSnap.id}" data-name="${user.username}">Remove Account</button>`}
-                    </td>
-                `;
-                userListContainer.appendChild(tr);
-            });
-
-            document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    removeAccount(this.dataset.id, this.dataset.name);
+                    tr.innerHTML = `
+                        <td>${user.username}${isMainAdmin ? '<strong>(Admin)</strong>' : ''}</td>
+                        <td><code>${user.password}</code></td>
+                        <td>
+                            ${isMainAdmin 
+                                ? '<em>N/A (Owner)</em>' 
+                                : `<button class="delete-btn" onclick="removeAccount('${user.username}')">Remove Account</button>`}
+                        </td>
+                    `;
+                    userListContainer.appendChild(tr);
                 });
-            });
+            } catch (err) {
+                alert('Failed to load admin list.');
+            }
         }
 
         // Remove Account Function
-        async function removeAccount(docId, usernameToDelete) {
+        async function removeAccount(usernameToDelete) {
             if (confirm(`Are you sure you want to delete the account ${usernameToDelete}?`)) {
                 try {
-                    await deleteDoc(doc(db, "users", docId));
-                    alert('Account deleted successfully.');
-                    loadAdminUserList();
-                } catch (error) {
-                    alert(error.message);
+                    const res = await fetch(`${API_URL}/admin/user/${usernameToDelete}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        alert('Account deleted successfully.');
+                        loadAdminUserList();
+                    }
+                } catch (err) {
+                    alert('Error deleting account.');
                 }
             }
         }
 
-        // Profile Picture Upload Handler
+        // Upload Profile Picture
         const fileUpload = document.getElementById('file-upload');
         fileUpload.addEventListener('change', function(event) {
             const file = event.target.files[0];
@@ -385,18 +391,20 @@
                     const imageDataUrl = e.target.result;
                     document.getElementById('avatar').src = imageDataUrl;
 
-                    const userDocRef = doc(db, "users", currentUser.uid);
-                    await updateDoc(userDocRef, { pfp: imageDataUrl });
+                    await fetch(`${API_URL}/user/pfp`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username: currentUsername, pfp: imageDataUrl })
+                    });
                 };
                 reader.readAsDataURL(file);
             }
         });
 
-        // Logout Handler
+        // Logout
         document.getElementById('logout-btn').addEventListener('click', function() {
-            signOut(auth).then(() => {
-                window.location.href = 'index.html';
-            });
+            localStorage.removeItem('currentUsername');
+            window.location.href = 'index.html';
         });
     </script>
 
