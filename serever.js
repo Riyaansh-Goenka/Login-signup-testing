@@ -1,14 +1,13 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
-const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// Enable CORS for all incoming connections
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Allows profile image base64 strings
+app.use(express.json({ limit: '10mb' }));
 
 // Initialize SQLite Database
 const db = new sqlite3.Database('./users.db', (err) => {
@@ -77,7 +76,6 @@ app.put('/api/user/update', (req, res) => {
     const { currentUsername, newUsername, newPassword, currentPassword } = req.body;
     const currentLower = currentUsername.toLowerCase();
 
-    // Verify current password first
     db.get(`SELECT * FROM users WHERE usernameLower = ?`, [currentLower], (err, row) => {
         if (err || !row) return res.status(404).json({ error: 'User not found.' });
         if (row.password !== currentPassword) return res.status(400).json({ error: 'Incorrect current password!' });
@@ -127,4 +125,5 @@ app.delete('/api/admin/user/:username', (req, res) => {
     });
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+// Listen on all network addresses (0.0.0.0)
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
