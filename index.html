@@ -65,12 +65,8 @@
                 <input type="text" id="signup-username" required placeholder="Choose a username">
             </div>
             <div class="input-group">
-                <label for="signup-email">Email</label>
-                <input type="email" id="signup-email" required placeholder="Enter your email">
-            </div>
-            <div class="input-group">
                 <label for="signup-password">Password</label>
-                <input type="password" id="signup-password" required minlength="6" placeholder="At least 6 characters">
+                <input type="password" id="signup-password" required minlength="1" placeholder="At least 1 character">
             </div>
             <div class="input-group">
                 <label for="confirm-password">Confirm Password</label>
@@ -84,8 +80,8 @@
         <h2>Log In</h2>
         <form id="login-form">
             <div class="input-group">
-                <label for="login-email">Email</label>
-                <input type="email" id="login-email" required placeholder="Enter your email">
+                <label for="login-username">Username</label>
+                <input type="text" id="login-username" required placeholder="Enter your username">
             </div>
             <div class="input-group">
                 <label for="login-password">Password</label>
@@ -95,31 +91,15 @@
         </form>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDocs, collection, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        // TODO: Replace with your actual Firebase config keys from Firebase Console
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+    <script>
+        // Update this URL once you deploy your backend server online
+        const API_URL = "http://localhost:3000/api";
 
         // Handle Signup
         document.getElementById('signup-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const username = document.getElementById('signup-username').value.trim();
-            const email = document.getElementById('signup-email').value.trim();
             const password = document.getElementById('signup-password').value;
             const confirmPassword = document.getElementById('confirm-password').value;
 
@@ -131,47 +111,51 @@
             }
 
             try {
-                // Check if username is taken in Cloud Firestore
-                const q = query(collection(db, "users"), where("usernameLower", "==", username.toLowerCase()));
-                const querySnapshot = await getDocs(q);
+                const response = await fetch(`${API_URL}/signup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
 
-                if (!querySnapshot.empty) {
-                    alert('That username is already taken! Please choose another one.');
+                const data = await response.json();
+
+                if (!response.ok) {
+                    alert(data.error);
                     return;
                 }
 
-                // Create user with Firebase Auth
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                const user = userCredential.user;
-
-                // Save user profile details to Firestore database
-                await setDoc(doc(db, "users", user.uid), {
-                    uid: user.uid,
-                    username: username,
-                    usernameLower: username.toLowerCase(),
-                    email: email,
-                    pfp: 'https://picsum.photos/200',
-                    createdAt: new Date().toISOString()
-                });
-
+                localStorage.setItem('currentUsername', data.username);
                 alert('Account created successfully!');
                 window.location.href = 'yabhb.html';
-            } catch (error) {
-                alert(error.message);
+            } catch (err) {
+                alert('Could not connect to the server.');
             }
         });
 
         // Handle Login
         document.getElementById('login-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const email = document.getElementById('login-email').value.trim();
+            const username = document.getElementById('login-username').value.trim();
             const password = document.getElementById('login-password').value;
 
             try {
-                await signInWithEmailAndPassword(auth, email, password);
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    alert(data.error);
+                    return;
+                }
+
+                localStorage.setItem('currentUsername', data.user.username);
                 window.location.href = 'yabhb.html';
-            } catch (error) {
-                alert('Invalid email or password.');
+            } catch (err) {
+                alert('Could not connect to the server.');
             }
         });
     </script>
