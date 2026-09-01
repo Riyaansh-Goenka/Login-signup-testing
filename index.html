@@ -65,8 +65,12 @@
                 <input type="text" id="signup-username" required placeholder="Choose a username">
             </div>
             <div class="input-group">
+                <label for="signup-email">Email</label>
+                <input type="email" id="signup-email" required placeholder="Enter your email">
+            </div>
+            <div class="input-group">
                 <label for="signup-password">Password</label>
-                <input type="password" id="signup-password" required minlength="1" placeholder="At least 1 character">
+                <input type="password" id="signup-password" required minlength="6" placeholder="At least 6 characters">
             </div>
             <div class="input-group">
                 <label for="confirm-password">Confirm Password</label>
@@ -80,8 +84,8 @@
         <h2>Log In</h2>
         <form id="login-form">
             <div class="input-group">
-                <label for="login-username">Username</label>
-                <input type="text" id="login-username" required placeholder="Enter your username">
+                <label for="login-email">Email</label>
+                <input type="email" id="login-email" required placeholder="Enter your email">
             </div>
             <div class="input-group">
                 <label for="login-password">Password</label>
@@ -91,21 +95,34 @@
         </form>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDocs, collection, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        function getUsers() {
-            return JSON.parse(localStorage.getItem('registeredUsersByUsername')) || {};
-        }
+        // TODO: Replace with your actual Firebase config keys from Firebase Console
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
         // Handle Signup
-        document.getElementById('signup-form').addEventListener('submit', function(e) {
+        document.getElementById('signup-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const username = document.getElementById('signup-username').value.trim();
+            const email = document.getElementById('signup-email').value.trim();
             const password = document.getElementById('signup-password').value;
             const confirmPassword = document.getElementById('confirm-password').value;
 
-            // 1. Password Match Check
             if (password !== confirmPassword) {
                 alert("Passwords do not match! Please enter them again.");
                 document.getElementById('confirm-password').value = '';
@@ -113,49 +130,48 @@
                 return;
             }
 
-            const users = getUsers();
+            try {
+                // Check if username is taken in Cloud Firestore
+                const q = query(collection(db, "users"), where("usernameLower", "==", username.toLowerCase()));
+                const querySnapshot = await getDocs(q);
 
-            // 2. Unique Username Check (Case-insensitive)
-            const usernameExists = Object.keys(users).some(
-                u => u.toLowerCase() === username.toLowerCase()
-            );
+                if (!querySnapshot.empty) {
+                    alert('That username is already taken! Please choose another one.');
+                    return;
+                }
 
-            if (usernameExists) {
-                alert('That username is already taken! Please choose another one.');
-                return;
+                // Create user with Firebase Auth
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // Save user profile details to Firestore database
+                await setDoc(doc(db, "users", user.uid), {
+                    uid: user.uid,
+                    username: username,
+                    usernameLower: username.toLowerCase(),
+                    email: email,
+                    pfp: 'https://picsum.photos/200',
+                    createdAt: new Date().toISOString()
+                });
+
+                alert('Account created successfully!');
+                window.location.href = 'yabhb.html';
+            } catch (error) {
+                alert(error.message);
             }
-
-            // 3. Register Account directly
-            users[username] = {
-                username: username,
-                password: password,
-                pfp: 'https://picsum.photos/200'
-            };
-
-            localStorage.setItem('registeredUsersByUsername', JSON.stringify(users));
-            localStorage.setItem('currentUsername', username);
-
-            alert('Account created successfully!');
-            window.location.href = 'yabhb.html';
         });
 
         // Handle Login
-        document.getElementById('login-form').addEventListener('submit', function(e) {
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const usernameInput = document.getElementById('login-username').value.trim();
-            const passwordInput = document.getElementById('login-password').value;
-            const users = getUsers();
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
 
-            // Find user by exact Username
-            const foundUsername = Object.keys(users).find(
-                uname => uname.toLowerCase() === usernameInput.toLowerCase()
-            );
-
-            if (foundUsername && users[foundUsername].password === passwordInput) {
-                localStorage.setItem('currentUsername', foundUsername);
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
                 window.location.href = 'yabhb.html';
-            } else {
-                alert('Invalid username or password.');
+            } catch (error) {
+                alert('Invalid email or password.');
             }
         });
     </script>
