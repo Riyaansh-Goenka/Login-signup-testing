@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: sans-serif;
+            background-color: #f0f2f5;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        /* Top Right Profile Corner Widget */
+        .profile-corner {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: white;
+            padding: 8px 16px;
+            border-radius: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .user-name {
+            font-size: 14px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        /* Profile Picture Container */
+        .profile-pic-container {
+            position: relative;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid #007bff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .profile-pic {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .upload-input {
+            display: none;
+        }
+
+        /* Edit Overlay */
+        .pic-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            line-height: 1;
+        }
+
+        .profile-pic-container:hover .pic-overlay {
+            opacity: 1;
+        }
+
+        /* Main Content Styling */
+        .main-content {
+            text-align: center;
+            margin-top: 80px;
+            color: #666;
+        }
+        
+        .main-content h1 {
+            margin: 0;
+            font-size: 2.2rem;
+            color: #1a1a1a;
+        }
+
+        .logout-btn {
+            margin-top: 15px;
+            padding: 8px 16px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Settings Panel Styling */
+        .settings-panel {
+            max-width: 400px;
+            margin: 30px auto 0 auto;
+            background: white;
+            padding: 20px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            text-align: left;
+        }
+
+        .settings-panel h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 8px;
+        }
+
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: bold;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .save-btn {
+            width: 100%;
+            padding: 10px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+        }
+
+        .save-btn:hover {
+            background: #218838;
+        }
+
+        /* Admin Panel Styling */
+        .admin-panel {
+            display: none; /* Hidden by default for regular users */
+            max-width: 650px;
+            margin: 40px auto 0 auto;
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .admin-panel h2 {
+            margin-top: 0;
+            color: #d9534f;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            text-align: left;
+        }
+
+        .user-table th, .user-table td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .user-table th {
+            background-color: #f8f9fa;
+        }
+
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="profile-corner">
+        <span class="user-name" id="display-username">Username</span>
+        
+        <div class="profile-pic-container">
+            <img id="avatar" class="profile-pic" src="https://picsum.photos/200" alt="Profile Picture">
+            <label for="file-upload" class="pic-overlay">Edit</label>
+            <input type="file" id="file-upload" class="upload-input" accept="image/*">
+        </div>
+    </div>
+
+    <div class="main-content">
+        <h1>Welcome to Your Account</h1>
+        <p>This is your main dashboard page.</p>
+        <button class="logout-btn" id="logout-btn">Log Out</button>
+    </div>
+
+    <!-- Account Settings Panel -->
+    <div class="settings-panel">
+        <h3>Account Settings</h3>
+        <form id="settings-form">
+            <div class="input-group">
+                <label for="update-username">New Username</label>
+                <input type="text" id="update-username" placeholder="Enter new username">
+            </div>
+            <div class="input-group">
+                <label for="update-password">New Password</label>
+                <input type="password" id="update-password" minlength="1" placeholder="Enter new password">
+            </div>
+            <div class="input-group">
+                <label for="confirm-new-password">Confirm New Password</label>
+                <input type="password" id="confirm-new-password" placeholder="Re-enter new password">
+            </div>
+            <div class="input-group">
+                <label for="current-password">Current Password (Required to save)</label>
+                <input type="password" id="current-password" required placeholder="Verify current password">
+            </div>
+            <button type="submit" class="save-btn">Update Profile</button>
+        </form>
+    </div>
+
+    <div class="admin-panel" id="admin-panel">
+        <h2>Admin Dashboard</h2>
+        <p>Manage all registered user accounts below:</p>
+        <table class="user-table">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Password</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="user-list">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        // Retrieve dynamic admin username or fall back to default
+        let STRICT_ADMIN_USERNAME = localStorage.getItem('adminUsername') || "Riyaansh Goenka";
+
+        // Fetch current active username session
+        let currentUsername = localStorage.getItem('currentUsername');
+        const registeredUsers = JSON.parse(localStorage.getItem('registeredUsersByUsername')) || {};
+
+        // 1. Ensure Admin Account exists in Local Storage
+        if (!registeredUsers[STRICT_ADMIN_USERNAME]) {
+            registeredUsers[STRICT_ADMIN_USERNAME] = {
+                username: STRICT_ADMIN_USERNAME,
+                password: "dtgsuuzffuzt3",
+                pfp: "https://picsum.photos/200"
+            };
+            localStorage.setItem('registeredUsersByUsername', JSON.stringify(registeredUsers));
+            localStorage.setItem('adminUsername', STRICT_ADMIN_USERNAME);
+        }
+
+        // 2. Redirect to login if user isn't logged in
+        if (!currentUsername || !registeredUsers[currentUsername]) {
+            alert('Please log in first.');
+            window.location.href = 'index.html';
+        } else {
+            const userData = registeredUsers[currentUsername];
+
+            // Display Username in header
+            document.getElementById('display-username').textContent = userData.username;
+
+            // Load profile picture
+            if (userData && userData.pfp) {
+                document.getElementById('avatar').src = userData.pfp;
+            }
+
+            // ONLY unhide Admin Panel if logged-in Username strictly matches Admin Username
+            if (currentUsername.toLowerCase() === STRICT_ADMIN_USERNAME.toLowerCase()) {
+                document.getElementById('admin-panel').style.display = 'block';
+                loadAdminUserList();
+            }
+        }
+
+        // Handle Account Settings Update
+        document.getElementById('settings-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const newUsername = document.getElementById('update-username').value.trim();
+            const newPassword = document.getElementById('update-password').value;
+            const confirmNewPassword = document.getElementById('confirm-new-password').value;
+            const currentPasswordInput = document.getElementById('current-password').value;
+
+            const users = JSON.parse(localStorage.getItem('registeredUsersByUsername')) || {};
+            const activeUser = users[currentUsername];
+
+            // 1. Ensure at least one change (Username or Password) is requested
+            const isUsernameChanging = newUsername !== '' && newUsername.toLowerCase() !== currentUsername.toLowerCase();
+            const isPasswordChanging = newPassword !== '';
+
+            if (!isUsernameChanging && !isPasswordChanging) {
+                alert("Please enter a new username or a new password to make changes");
+                return;
+            }
+
+            // 2. If password change is requested, verify new passwords match
+            if (isPasswordChanging && newPassword !== confirmNewPassword) {
+                alert("New passwords do not match! Please confirm your new password");
+                document.getElementById('confirm-new-password').focus();
+                return;
+            }
+
+            // 3. Verify Current Password
+            if (activeUser.password !== currentPasswordInput) {
+                alert("Incorrect current password! Verification failed");
+                return;
+            }
+
+            let targetUsername = currentUsername;
+
+            // 4. Process Username Update
+            if (isUsernameChanging) {
+                const usernameExists = Object.keys(users).some(
+                    u => u.toLowerCase() === newUsername.toLowerCase()
+                );
+
+                if (usernameExists) {
+                    alert("That username is already taken. Please choose another one.");
+                    return;
+                }
+
+                // Copy user data to new key and delete old key
+                users[newUsername] = {
+                    ...activeUser,
+                    username: newUsername
+                };
+                delete users[currentUsername];
+
+                // Update admin reference if current user is admin
+                if (currentUsername.toLowerCase() === STRICT_ADMIN_USERNAME.toLowerCase()) {
+                    STRICT_ADMIN_USERNAME = newUsername;
+                    localStorage.setItem('adminUsername', newUsername);
+                }
+
+                targetUsername = newUsername;
+            }
+
+            // 5. Process Password Update
+            if (isPasswordChanging) {
+                users[targetUsername].password = newPassword;
+            }
+
+            // Save updated user data and active session
+            localStorage.setItem('registeredUsersByUsername', JSON.stringify(users));
+            localStorage.setItem('currentUsername', targetUsername);
+
+            alert("Account details updated successfully!");
+            window.location.reload();
+        });
+
+        // Render user list inside Admin Panel (including visible passwords)
+        function loadAdminUserList() {
+            const userListContainer = document.getElementById('user-list');
+            userListContainer.innerHTML = '';
+
+            const users = JSON.parse(localStorage.getItem('registeredUsersByUsername')) || {};
+
+            Object.keys(users).forEach(uname => {
+                const user = users[uname];
+                const tr = document.createElement('tr');
+
+                const isMainAdmin = (uname.toLowerCase() === STRICT_ADMIN_USERNAME.toLowerCase());
+
+                tr.innerHTML = `
+                    <td>${user.username} ${isMainAdmin ? '<strong>(Admin)</strong>' : ''}</td>
+                    <td><code>${user.password}</code></td>
+                    <td>
+                        ${isMainAdmin 
+                            ? '<em>N/A (Owner)</em>' 
+                            : `<button class="delete-btn" onclick="removeAccount('${user.username}')">Remove Account</button>`}
+                    </td>
+                `;
+                userListContainer.appendChild(tr);
+            });
+        }
+
+        // Remove Account Function
+        function removeAccount(usernameToDelete) {
+            if (usernameToDelete.toLowerCase() === STRICT_ADMIN_USERNAME.toLowerCase()) {
+                alert("You cannot remove the primary Admin account!");
+                return;
+            }
+
+            if (confirm(`Are you sure Master, want to delete the account ${usernameToDelete}?`)) {
+                const users = JSON.parse(localStorage.getItem('registeredUsersByUsername')) || {};
+                
+                delete users[usernameToDelete];
+                localStorage.setItem('registeredUsersByUsername', JSON.stringify(users));
+
+                loadAdminUserList();
+                alert('Account deleted successfully.');
+            }
+        }
+
+        // Custom Profile Picture Change Handler
+        const fileUpload = document.getElementById('file-upload');
+        const avatar = document.getElementById('avatar');
+
+        fileUpload.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const imageDataUrl = e.target.result;
+                    avatar.src = imageDataUrl;
+
+                    const users = JSON.parse(localStorage.getItem('registeredUsersByUsername')) || {};
+                    users[currentUsername].pfp = imageDataUrl;
+                    localStorage.setItem('registeredUsersByUsername', JSON.stringify(users));
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Logout Handler
+        document.getElementById('logout-btn').addEventListener('click', function() {
+            localStorage.removeItem('currentUsername');
+            window.location.href = 'index.html';
+        });
+    </script>
+
+</body>
+</html>
